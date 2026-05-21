@@ -37,7 +37,7 @@ class WriteBlocker:
                     capture_output=True, text=True, check=True
                 )
                 ok = ro.stdout.strip() == "1"
-                results.append((target, ok, "Read-only enabled" if ok else "Still read-write"))
+                results.append((target, ok, "Solo lectura activado" if ok else "Sigue lectura/escritura"))
             except subprocess.CalledProcessError as e:
                 results.append((target, False, f"Error: {e.stderr.decode().strip()}"))
         return results
@@ -51,7 +51,7 @@ class WriteBlocker:
                     ["blockdev", "--setrw", target],
                     check=True, capture_output=True
                 )
-                results.append((target, True, "Read-write restored"))
+                results.append((target, True, "Lectura/escritura restaurado"))
             except subprocess.CalledProcessError as e:
                 results.append((target, False, f"Error: {e.stderr.decode().strip()}"))
         return results
@@ -65,7 +65,7 @@ class WriteBlocker:
                     ["blockdev", "--getro", target],
                     capture_output=True, text=True, check=True
                 )
-                status[target] = "READ-ONLY" if ro.stdout.strip() == "1" else "READ-WRITE"
+                status[target] = "SOLO LECTURA" if ro.stdout.strip() == "1" else "LECTURA/ESCRITURA"
             except Exception as e:
                 status[target] = f"ERROR: {e}"
         return status

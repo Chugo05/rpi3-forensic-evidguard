@@ -1,2 +1,2 @@
-# No external Python dependencies required
-# Uses only standard library
+# No se requieren dependencias externas de Python
+# Usa solo la librería estándar

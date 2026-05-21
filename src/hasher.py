@@ -17,7 +17,7 @@ class HashChecker:
 
     def __init__(self, algorithm="sha256", chunk_size=4*1024*1024):
         if algorithm not in self.ALGORITHMS:
-            raise ValueError(f"Unsupported: {algorithm}. Use: {list(self.ALGORITHMS.keys())}")
+            raise ValueError(f"No soportado: {algorithm}. Usa: {list(self.ALGORITHMS.keys())}")
         self.algorithm = algorithm
         self.chunk_size = chunk_size
 
@@ -42,7 +42,7 @@ class HashChecker:
                         pct = (bytes_read / total_size) * 100
                         sys.stderr.write(f"\r[{self.algorithm.upper()}] {bytes_read}/{total_size} bytes ({pct:.1f}%)")
                     else:
-                        sys.stderr.write(f"\r[{self.algorithm.upper()}] {bytes_read} bytes read...")
+                        sys.stderr.write(f"\r[{self.algorithm.upper()}] {bytes_read} bytes leidos...")
                     sys.stderr.flush()
 
         if progress:

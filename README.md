@@ -1,13 +1,13 @@
 # RPI3 Forensic EvidGuard
 
-**Write Blocker + Hash Checker** diseñado específicamente para **Raspberry Pi 3 Modelo B** como capa de seguridad forense complementaria a `rclone` u otras herramientas de adquisición.
+**Bloqueador de escritura + Verificador de hashes** diseñado específicamente para **Raspberry Pi 3 Modelo B** como capa de seguridad forense complementaria a `rclone` u otras herramientas de adquisición.
 
 ## ¿Por qué existe?
 
-Las herramientas como `rclone` son excelentes para generar imágenes o copiar evidencia, pero **no garantizan** que el sistema operativo no escriba accidentalmente en el disco fuente durante el proceso. Este proyecto añade:
+Herramientas como `rclone` son excelentes para generar imágenes o copiar evidencia, pero **no garantizan** que el sistema operativo no escriba accidentalmente en el disco fuente durante el proceso. Este proyecto añade:
 
 1. **Bloqueo de escritura a nivel kernel** (compatible con el parche de [msuhanov/Linux-write-blocker](https://github.com/msuhanov/Linux-write-blocker))
-2. **Hash checker** con verificación de integridad
+2. **Verificador de hashes** con verificación de integridad
 3. **Logger forense** con timestamps y trazabilidad
 
 ## Características
@@ -22,9 +22,8 @@ Las herramientas como `rclone` son excelentes para generar imágenes o copiar ev
 ## Instalación
 
 ```bash
-git clone https://github.com/Chugo05/rpi3-forensic-evidguard.git
+git clone https://github.com/tu-usuario/rpi3-forensic-evidguard.git
 cd rpi3-forensic-evidguard
-chmod +x install.sh
 sudo ./install.sh
 ```
 
@@ -32,25 +31,25 @@ sudo ./install.sh
 
 ```bash
 # 1. Bloquear el dispositivo fuente
-sudo rpi3-guard --block /dev/sdb
+sudo rpi3-evidguard --block /dev/sdb
 
 # 2. Calcular hash del origen
-sudo rpi3-guard --hash-pre /dev/sdb --save pre.json
+sudo rpi3-evidguard --hash-pre /dev/sdb --save pre.json
 
 # 3. Ejecutar rclone (o tu herramienta de adquisición)
 rclone copy /dev/sdb remote:bucket/evidencia/caso001.raw
 
 # 4. Calcular hash de la imagen generada
-sudo rpi3-guard --hash-post /mnt/evidencia/caso001.raw --save post.json
+sudo rpi3-evidguard --hash-post /mnt/evidencia/caso001.raw --save post.json
 
 # 5. Verificar integridad
-sudo rpi3-guard --verify pre.json post.json
+sudo rpi3-evidguard --verify pre.json post.json
 ```
 
 ## Modo Full (todo en uno)
 
 ```bash
-sudo rpi3-guard --full /dev/sdb /mnt/evidencia/caso001.raw --case CASE-2026-001
+sudo rpi3-evidguard --full /dev/sdb /mnt/evidencia/caso001.raw --case CASO-2026-001
 ```
 
 Esto:
@@ -73,27 +72,31 @@ Esto:
 | `--algorithm ALG` | md5, sha1, sha256, sha512, blake2b |
 | `--case ID` | Identificador del caso para logs |
 
-## Requisitos
-
-- Raspberry Pi 3B (o compatible)
-- Raspberry Pi OS / Debian-based
-- Python 3.7+
-- `blockdev`, `lsblk`
-- Parche de kernel de msuhanov **recomendado** (aunque funciona con `blockdev` nativo)
-
 ## Arquitectura
 
 ```
-rpi3-forensic-guard/
+rpi3-forensic-evidguard/
 ├── src/
 │   ├── cli.py         # Interfaz de línea de comandos
-│   ├── blocker.py     # Gestión de bloqueo de escritura
+│   ├── blocker.py     # Gestión del bloqueo de escritura
 │   ├── hasher.py      # Cálculo de hashes streaming
 │   └── logger.py      # Logger forense JSON
 ├── udev/
 │   └── 01-forensic-readonly.rules  # Bloqueo automático vía udev
 └── install.sh         # Instalador
 ```
+
+## Seguridad forense
+
+Este toolkit usa `blockdev --setro` que marca el dispositivo como solo lectura en el kernel. Para **máxima protección forense**, se recomienda aplicar el parche de kernel de [Maxim Suhanov](https://github.com/msuhanov/Linux-write-blocker) que intercepta peticiones de escritura a nivel del driver de bloques, evitando que filesystem drivers con bugs (ext4 orphan inode cleanup, XFS superblock writes, etc.) alteren la evidencia.
+
+## Requisitos
+
+- Raspberry Pi 3B (o compatible)
+- Raspberry Pi OS / Debian-based
+- Python 3.7+
+- `blockdev`, `lsblk` (incluidos en `util-linux`)
+- Parche de kernel de msuhanov (opcional pero recomendado)
 
 ## Licencia
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Forensic audit logger - JSON Lines format
+Logger forense de auditoria - formato JSON Lines
 """
 import json
 from datetime import datetime
@@ -23,10 +23,10 @@ class ForensicLogger:
         return entry
 
     def header(self, case_id=""):
-        self.log("START", f"Forensic EvidGuard initiated", {"case": case_id})
+        self.log("START", f"Forensic EvidGuard iniciado", {"case": case_id})
 
     def footer(self):
-        self.log("END", "Forensic EvidGuard completed")
+        self.log("END", "Forensic EvidGuard completado")
 
     def export_json(self, path):
         with open(path, "w") as f:

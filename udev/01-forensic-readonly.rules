@@ -1,7 +1,7 @@
-# RPI3 Forensic EvidGuard - udev rules
-# Auto-block new block devices for forensic safety
-# Install: sudo cp udev/01-forensic-readonly.rules /etc/udev/rules.d/
-#          sudo udevadm control --reload-rules
+# RPI3 Forensic EvidGuard - reglas udev
+# Bloqueo automatico de nuevos dispositivos de bloques para seguridad forense
+# Instalar: sudo cp udev/01-forensic-readonly.rules /etc/udev/rules.d/
+#           sudo udevadm control --reload-rules
 
 SUBSYSTEM=="block", KERNEL!="loop*", ACTION=="add", RUN+="/sbin/blockdev --setro /dev/%k"
 SUBSYSTEM=="block", KERNEL=="sd*[0-9]", ACTION=="add", RUN+="/bin/sh -c '/sbin/blockdev --setro /dev/$(/bin/lsblk -no PKNAME /dev/%k) 2>/dev/null || true'"

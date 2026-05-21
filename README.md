@@ -24,6 +24,7 @@ Las herramientas como `rclone` son excelentes para generar imágenes o copiar ev
 ```bash
 git clone https://github.com/Chugo05/rpi3-forensic-evidguard.git
 cd rpi3-forensic-evidguard
+chmod +x install.sh
 sudo ./install.sh
 ```
 

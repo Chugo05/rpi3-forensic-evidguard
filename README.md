@@ -1,4 +1,4 @@
-# RPI3 Forensic Guard
+# RPI3 Forensic EvidGuard
 
 **Write Blocker + Hash Checker** diseñado específicamente para **Raspberry Pi 3 Modelo B** como capa de seguridad forense complementaria a `rclone` u otras herramientas de adquisición.
 

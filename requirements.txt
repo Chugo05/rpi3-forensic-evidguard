@@ -1,1 +1,2 @@
-# No external Python dependencies required\n# Uses only standard library\n
+# No external Python dependencies required
+# Uses only standard library

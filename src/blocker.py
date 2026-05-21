@@ -1,19 +1,16 @@
 #!/usr/bin/env python3
 """
 Write Blocker module for Raspberry Pi 3B
-Uses Linux kernel read-only flags + msuhanov patch compatibility
+Kernel-level write blocking via blockdev + msuhanov patch compatibility
 """
 import subprocess
-import sys
 
 class WriteBlocker:
     def __init__(self, device):
         self.device = device
-        # Detect parent block device (e.g. /dev/sdb1 -> /dev/sdb)
         self.parent = self._detect_parent(device)
 
     def _detect_parent(self, dev):
-        """Find parent block device for partitions"""
         try:
             result = subprocess.run(
                 ["lsblk", "-no", "PKNAME", dev],
@@ -27,11 +24,7 @@ class WriteBlocker:
         return dev
 
     def enable(self):
-        """Enable write blocking on device and parent"""
-        targets = [self.parent]
-        if self.device != self.parent:
-            targets.append(self.device)
-
+        targets = list(dict.fromkeys([self.parent, self.device]))
         results = []
         for target in targets:
             try:
@@ -43,21 +36,14 @@ class WriteBlocker:
                     ["blockdev", "--getro", target],
                     capture_output=True, text=True, check=True
                 )
-                if ro.stdout.strip() == "1":
-                    results.append((target, True, "Read-only enabled"))
-                else:
-                    results.append((target, False, "Still read-write"))
+                ok = ro.stdout.strip() == "1"
+                results.append((target, ok, "Read-only enabled" if ok else "Still read-write"))
             except subprocess.CalledProcessError as e:
                 results.append((target, False, f"Error: {e.stderr.decode().strip()}"))
-
         return results
 
     def disable(self):
-        """Disable write blocking (use with caution)"""
-        targets = [self.parent]
-        if self.device != self.parent:
-            targets.append(self.device)
-
+        targets = list(dict.fromkeys([self.parent, self.device]))
         results = []
         for target in targets:
             try:
@@ -71,11 +57,7 @@ class WriteBlocker:
         return results
 
     def status(self):
-        """Check current blocking status"""
-        targets = [self.parent]
-        if self.device != self.parent:
-            targets.append(self.device)
-
+        targets = list(dict.fromkeys([self.parent, self.device]))
         status = {}
         for target in targets:
             try:

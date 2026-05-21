@@ -1,1 +1,1 @@
-# RPI3 Forensic Guard\n
+# RPI3 Forensic EvidGuard\n

@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 """
-RPI3 Forensic Guard
-===================
-Write blocker + Hash checker for Raspberry Pi 3B
+RPI3 Forensic EvidGuard
+=======================
+Write Blocker + Hash Checker for Raspberry Pi 3 Model B
 Designed to complement rclone (or any other imaging tool)
 
 Usage:
     sudo python3 -m src.cli --block /dev/sdb
-    sudo python3 -m src.cli --hash-pre /dev/sdb --algorithm sha256
-    sudo python3 -m src.cli --hash-post /mnt/evidencia/imagen.raw --algorithm sha256
-    sudo python3 -m src.cli --verify /dev/sdb /mnt/evidencia/imagen.raw --algorithm sha256
-    sudo python3 -m src.cli --full /dev/sdb /mnt/evidencia/imagen.raw --case CASE-2026-001
+    sudo python3 -m src.cli --hash-pre /dev/sdb --save pre.json
+    sudo python3 -m src.cli --hash-post /mnt/evidencia/imagen.raw --save post.json
+    sudo python3 -m src.cli --verify pre.json post.json
+    sudo python3 -m src.cli --full /dev/sdb /mnt/evidencia/imagen.raw --case CASE-001
 """
 import argparse
 import sys
 import os
+import json
 
 from .blocker import WriteBlocker
 from .hasher import HashChecker
@@ -22,18 +23,18 @@ from .logger import ForensicLogger
 
 def main():
     parser = argparse.ArgumentParser(
-        description="RPI3 Forensic Guard - Write Blocker + Hash Checker",
+        description="RPI3 Forensic EvidGuard - Write Blocker + Hash Checker",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Integration with rclone:
-  1. Block device:   sudo rpi3-guard --block /dev/sdb
-  2. Hash source:    sudo rpi3-guard --hash-pre /dev/sdb --save pre.json
+  1. Block device:   sudo rpi3-evidguard --block /dev/sdb
+  2. Hash source:    sudo rpi3-evidguard --hash-pre /dev/sdb --save pre.json
   3. Run rclone:     rclone copy /dev/sdb remote:bucket/imagen.raw
-  4. Hash image:     sudo rpi3-guard --hash-post /path/to/imagen.raw --save post.json
-  5. Verify:         sudo rpi3-guard --verify pre.json post.json
+  4. Hash image:     sudo rpi3-evidguard --hash-post /path/to/imagen.raw --save post.json
+  5. Verify:         sudo rpi3-evidguard --verify pre.json post.json
 
 Or do it all at once:
-  sudo rpi3-guard --full /dev/sdb /mnt/evidencia/imagen.raw --case CASE-001
+  sudo rpi3-evidguard --full /dev/sdb /mnt/evidencia/imagen.raw --case CASE-001
         """
     )
 
@@ -54,7 +55,7 @@ Or do it all at once:
     parser.add_argument("--full", nargs=2, metavar=("DEV","IMAGE"),
                        help="Full workflow: block + hash-pre + hash-post + verify")
     parser.add_argument("--case", default="UNNAMED", help="Case ID for logging")
-    parser.add_argument("--log", default="forensic-guard.log", help="Log file path")
+    parser.add_argument("--log", default="forensic-evidguard.log", help="Log file path")
 
     args = parser.parse_args()
 
@@ -70,7 +71,6 @@ Or do it all at once:
         logger.header(args.case)
         blocker = WriteBlocker(args.block)
         results = blocker.enable()
-
         all_ok = True
         for target, ok, msg in results:
             status = "[OK]" if ok else "[ERROR]"
@@ -78,16 +78,13 @@ Or do it all at once:
             logger.log("BLOCK", f"{target}: {msg}", {"success": ok})
             if not ok:
                 all_ok = False
-
         if not all_ok:
             print("[!] Some devices could not be blocked. Abort.")
             sys.exit(1)
-
         status = blocker.status()
         print("\n[STATUS]")
         for dev, st in status.items():
             print(f"  {dev}: {st}")
-
         logger.log("BLOCK_STATUS", "Write blocking confirmed", status)
         print("\n[✓] Device is now write-protected. Safe to run rclone.")
         return
@@ -99,7 +96,6 @@ Or do it all at once:
         if confirm != "YES":
             print("Cancelled.")
             return
-
         blocker = WriteBlocker(args.unblock)
         results = blocker.disable()
         for target, ok, msg in results:
@@ -116,75 +112,58 @@ Or do it all at once:
             print(f"  {dev}: {st}")
         return
 
-    # === HASH PRE (source device) ===
+    # === HASH PRE ===
     if args.hash_pre:
         print(f"[*] Calculating {args.algorithm} hash of {args.hash_pre}...")
         logger.header(args.case)
         hasher = HashChecker(args.algorithm)
         result = hasher.hash_path(args.hash_pre)
-
         print(f"\n[RESULT]")
         print(f"  Algorithm: {result['algorithm']}")
         print(f"  Hash:      {result['hash']}")
         print(f"  Bytes:     {result['bytes']}")
         print(f"  Source:    {result['path']}")
-
         logger.log("HASH_PRE", f"Source hash calculated", result)
-
         if args.save:
-            import json
             with open(args.save, "w") as f:
                 json.dump(result, f, indent=2)
             print(f"\n[✓] Saved to {args.save}")
-
         return
 
-    # === HASH POST (image file) ===
+    # === HASH POST ===
     if args.hash_post:
         if not os.path.exists(args.hash_post):
             print(f"[ERROR] File not found: {args.hash_post}")
             sys.exit(1)
-
         print(f"[*] Calculating {args.algorithm} hash of {args.hash_post}...")
         hasher = HashChecker(args.algorithm)
         result = hasher.hash_path(args.hash_post)
-
         print(f"\n[RESULT]")
         print(f"  Algorithm: {result['algorithm']}")
         print(f"  Hash:      {result['hash']}")
         print(f"  Bytes:     {result['bytes']}")
         print(f"  File:      {result['path']}")
-
         logger.log("HASH_POST", f"Image hash calculated", result)
-
         if args.save:
-            import json
             with open(args.save, "w") as f:
                 json.dump(result, f, indent=2)
             print(f"\n[✓] Saved to {args.save}")
-
         return
 
     # === VERIFY ===
     if args.verify:
         pre_file, post_file = args.verify
-        import json
-
         with open(pre_file) as f:
             pre = json.load(f)
         with open(post_file) as f:
             post = json.load(f)
-
         print(f"[*] Verifying integrity...")
         print(f"  Pre:  {pre['hash']} ({pre['algorithm']})")
         print(f"  Post: {post['hash']} ({post['algorithm']})")
-
         if pre["algorithm"] != post["algorithm"]:
             print(f"[!] WARNING: Different algorithms used!")
-
         checker = HashChecker(pre["algorithm"])
         match = checker.verify(pre, post)
-
         if match:
             print(f"\n[✓] INTEGRITY VERIFIED - Hashes match perfectly")
             logger.log("VERIFY", "Integrity confirmed", {"match": True})
@@ -192,37 +171,35 @@ Or do it all at once:
             print(f"\n[✗] INTEGRITY FAILURE - Hashes DO NOT match")
             logger.log("VERIFY", "Integrity failure", {"match": False})
             sys.exit(2)
-
         return
 
-    # === FULL WORKFLOW ===
+    # === FULL ===
     if args.full:
         device, image_path = args.full
-        print(f"[*] FORENSIC GUARD FULL WORKFLOW")
+        print(f"[*] FORENSIC EVIDGUARD FULL WORKFLOW")
         print(f"    Case: {args.case}")
         print(f"    Source: {device}")
         print(f"    Image:  {image_path}")
+        print(f"    Hash:   {args.hash}")
         print()
-
         logger.header(args.case)
 
         # 1. Block
         print("[1/4] Enabling write block...")
         blocker = WriteBlocker(device)
-        block_results = blocker.enable()
-        for target, ok, msg in block_results:
+        for target, ok, msg in blocker.enable():
             if not ok:
-                print(f"[ERROR] Failed to block {target}: {msg}")
+                print(f"[ERROR] {target}: {msg}")
                 sys.exit(1)
-        print("[✓] Device write-protected\n")
+        print("[✓] Blocked\n")
         logger.log("BLOCK", "Write blocking enabled")
 
         # 2. Hash source
-        print(f"[2/4] Hashing source device ({args.algorithm})...")
-        hasher = HashChecker(args.algorithm)
-        pre_result = hasher.hash_path(device)
-        print(f"[✓] Source hash: {pre_result['hash']}\n")
-        logger.log("HASH_PRE", "Source hashed", pre_result)
+        print(f"[2/4] Hashing source ({args.hash})...")
+        hasher = HashChecker(args.hash)
+        pre = hasher.hash_path(device)
+        print(f"[✓] {pre['hash']}\n")
+        logger.log("HASH_PRE", "Done", pre)
 
         # 3. Wait for rclone / inform user
         print("[3/4] READY FOR RCLONE")
@@ -240,27 +217,18 @@ Or do it all at once:
     Once the image is created, re-run this tool with --hash-post
     or press Enter to hash the image now (if already present).
         """)
-
         if not os.path.exists(image_path):
             input("Press Enter when the image is ready...")
-
         if not os.path.exists(image_path):
             print(f"[ERROR] Image not found: {image_path}")
             sys.exit(1)
 
         # 4. Hash image and verify
-        print(f"[4/4] Hashing image ({args.algorithm})...")
-        post_result = hasher.hash_path(image_path)
-        print(f"[✓] Image hash: {post_result['hash']}\n")
-        logger.log("HASH_POST", "Image hashed", post_result)
-
-        match = hasher.verify(pre_result, post_result)
-
-        print("[VERIFY]")
-        print(f"  Source: {pre_result['hash']}")
-        print(f"  Image:  {post_result['hash']}")
-
-        if match:
+        print(f"[4/4] Hashing image and verifying...")
+        post = hasher.hash_path(image_path)
+        print(f"  Source: {pre['hash']}")
+        print(f"  Image:  {post['hash']}")
+        if hasher.verify(pre, post):
             print(f"\n[✓✓✓] FORENSIC INTEGRITY CONFIRMED")
             logger.log("VERIFY", "PASS", {"match": True})
         else:

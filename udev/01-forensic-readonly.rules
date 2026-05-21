@@ -1,0 +1,9 @@
+# RPI3 Forensic Guard - udev rules
+# Automatically block new block devices in forensic mode
+# Place in /etc/udev/rules.d/ and run: sudo udevadm control --reload-rules
+
+# Mark all non-loop block devices as read-only when they appear
+SUBSYSTEM=="block", KERNEL!="loop*", ACTION=="add", RUN+="/sbin/blockdev --setro /dev/%k"
+
+# For partitions, also block parent device
+SUBSYSTEM=="block", KERNEL=="sd*[0-9]", ACTION=="add", RUN+="/bin/sh -c '/sbin/blockdev --setro /dev/$(/bin/lsblk -no PKNAME /dev/%k) 2>/dev/null || true'"
